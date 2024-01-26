@@ -41,16 +41,21 @@ import Foundation
 // MARK: - 수정 후 코드
 
 class ParcelInformation {
+    let discountStrategies: [DiscountStrategy]
     let address: String
     var receiverName: String
     var receiverMobile: String
     let deliveryCost: Int
     private let discount: Discount
     var discountedCost: Int {
-        return discount.strategy.applyDiscount(deliveryCost: deliveryCost)
+        return discountStrategies.filter { $0.canDiscount(category: discount) }.first?.applyDiscount(deliveryCost: deliveryCost) ?? 0
     }
 
-    init(address: String, receiverName: String, receiverMobile: String, deliveryCost: Int, discount: Discount) {
+    init(discountStrategies: [DiscountStrategy], address: String, receiverName: String, receiverMobile: String, deliveryCost: Int, discount: Discount) throws {
+        
+        guard discountStrategies.contains(where: {$0.discountCategory == discount}) else { throw NSError() as Error }
+        self.discountStrategies = discountStrategies
+        
         self.address = address
         self.receiverName = receiverName
         self.receiverMobile = receiverMobile
@@ -60,39 +65,54 @@ class ParcelInformation {
 }
 
 struct NoDiscount: DiscountStrategy {
+    let discountCategory: Discount = .none
+    
     func applyDiscount(deliveryCost: Int) -> Int {
         return deliveryCost
+    }
+    
+    func canDiscount(category: Discount) -> Bool {
+        return category == .none
     }
 }
 
 struct VIPDiscount: DiscountStrategy {
+    let discountCategory: Discount = .vip
+    
     func applyDiscount(deliveryCost: Int) -> Int {
-        return deliveryCost / 20
+        return deliveryCost / DiscountAmount.vip
+    }
+    
+    func canDiscount(category: Discount) -> Bool {
+        return category == .vip
     }
 }
 
 struct CouponDiscount: DiscountStrategy {
+    let discountCategory: Discount = .coupon
+    
     func applyDiscount(deliveryCost: Int) -> Int {
-        return deliveryCost / 2
+        return deliveryCost / DiscountAmount.coupon
+    }
+    
+    func canDiscount(category: Discount) -> Bool {
+        return category == .coupon
     }
 }
 
 protocol DiscountStrategy {
+    var discountCategory: Discount { get }
     func applyDiscount(deliveryCost: Int) -> Int
+    func canDiscount(category: Discount) -> Bool
 }
 
 enum Discount: Int {
     case none = 0, vip, coupon
-    var strategy: DiscountStrategy {
-        switch self {
-        case .none:
-            return NoDiscount()
-        case .vip:
-            return VIPDiscount()
-        case .coupon:
-            return CouponDiscount()
-        }
-    }
+}
+
+enum DiscountAmount {
+    static let vip: Int = 20
+    static let coupon: Int = 2
 }
 
 class ParcelOrderProcessor {
