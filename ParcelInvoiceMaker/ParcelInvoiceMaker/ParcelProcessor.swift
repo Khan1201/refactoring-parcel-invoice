@@ -6,6 +6,40 @@
 
 import Foundation
 
+// MARK: - 수정 전 코드
+
+//class ParcelInformation {
+//    let address: String
+//    var receiverName: String
+//    var receiverMobile: String
+//    let deliveryCost: Int
+//    private let discount: Discount
+//    var discountedCost: Int {
+//        switch discount {
+//        case .none:
+//            return deliveryCost
+//        case .vip:
+//            return deliveryCost / 5 * 4
+//        case .coupon:
+//            return deliveryCost / 2
+//        }
+//    }
+//
+//    init(address: String, receiverName: String, receiverMobile: String, deliveryCost: Int, discount: Discount) {
+//        self.address = address
+//        self.receiverName = receiverName
+//        self.receiverMobile = receiverMobile
+//        self.deliveryCost = deliveryCost
+//        self.discount = discount
+//    }
+//}
+//
+//enum Discount: Int {
+//    case none = 0, vip, coupon
+//}
+
+// MARK: - 수정 후 코드
+
 class ParcelInformation {
     let address: String
     var receiverName: String
@@ -13,14 +47,7 @@ class ParcelInformation {
     let deliveryCost: Int
     private let discount: Discount
     var discountedCost: Int {
-        switch discount {
-        case .none:
-            return deliveryCost
-        case .vip:
-            return deliveryCost / 5 * 4
-        case .coupon:
-            return deliveryCost / 2
-        }
+        return discount.strategy.applyDiscount(deliveryCost: deliveryCost)
     }
 
     init(address: String, receiverName: String, receiverMobile: String, deliveryCost: Int, discount: Discount) {
@@ -32,8 +59,40 @@ class ParcelInformation {
     }
 }
 
+struct NoDiscount: DiscountStrategy {
+    func applyDiscount(deliveryCost: Int) -> Int {
+        return deliveryCost
+    }
+}
+
+struct VIPDiscount: DiscountStrategy {
+    func applyDiscount(deliveryCost: Int) -> Int {
+        return deliveryCost / 20
+    }
+}
+
+struct CouponDiscount: DiscountStrategy {
+    func applyDiscount(deliveryCost: Int) -> Int {
+        return deliveryCost / 2
+    }
+}
+
+protocol DiscountStrategy {
+    func applyDiscount(deliveryCost: Int) -> Int
+}
+
 enum Discount: Int {
     case none = 0, vip, coupon
+    var strategy: DiscountStrategy {
+        switch self {
+        case .none:
+            return NoDiscount()
+        case .vip:
+            return VIPDiscount()
+        case .coupon:
+            return CouponDiscount()
+        }
+    }
 }
 
 class ParcelOrderProcessor {
